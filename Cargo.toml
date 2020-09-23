@@ -113,3 +113,7 @@ path = "examples/windowless.rs"
 [[example]]
 name = "som"
 path = "examples/som.rs"
+
+[profile.release]
+lto=true
+opt-level='z'
