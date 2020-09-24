@@ -37,6 +37,7 @@ jobs:
         # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/software-installed-on-github-hosted-runners#macos-1015
         # we will try to install it manually below.
         os: [macos-latest, ubuntu-latest, windows-latest]
+        toolchain: [nightly]
 
     steps:
       - name: Environment
