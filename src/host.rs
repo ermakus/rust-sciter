@@ -5,7 +5,7 @@ use capi::scdef::SCITER_RT_OPTIONS;
 use capi::sctypes::*;
 use capi::screquest::HREQUEST;
 use capi::schandler::NativeHandler;
-use dom::event::EventHandler;
+use dom::{self, event::EventHandler};
 use eventhandler::*;
 use value::{Value};
 
@@ -166,11 +166,12 @@ pub struct Host {
 
 impl Host {
 
-	/// Attach Sciter host to existing window.
+	/// Attach Sciter host to an existing window.
 	///
-	/// Usually Sciter window created by a [`sciter::Window::create()`](../window/struct.Window.html#method.create),
+	/// Usually Sciter window is created by [`sciter::Window::create()`](../window/struct.Window.html#method.create),
 	/// but you can attach Sciter to an existing native window.
-	/// In this case you need to mix-in window events processing with `SciterProcND` (Windows only).
+	/// In this case you need [to mix-in](https://sciter.com/developers/embedding-principles/)
+	/// window events processing with `SciterProcND` (Windows only).
 	/// Sciter engine will be initialized either on `WM_CREATE` or `WM_INITDIALOG` response
 	/// or by calling `SciterCreateOnDirectXWindow` (again, Windows only).
 	pub fn attach(hwnd: HWINDOW) -> Host {
@@ -185,7 +186,7 @@ impl Host {
 		return host;
 	}
 
-	/// Attach Sciter host to an existing window with the given Host handler.
+	/// Attach Sciter host to an existing window with the given `Host` handler.
 	pub fn attach_with<Handler: HostHandler>(hwnd: HWINDOW, handler: Handler) -> Host {
 	  let host = Host {
       hwnd,
@@ -211,7 +212,7 @@ impl Host {
 		// eprintln!("{}: {:?}", std::any::type_name::<Handler>(), ptr);
 
 		let func = _event_handler_window_proc::<Handler>;
-		let flags = ::dom::event::default_events();
+		let flags = dom::event::default_events();
 		(_API.SciterWindowAttachEventHandler)(hwnd, func, ptr as LPVOID, flags as UINT);
 	}
 
@@ -263,8 +264,8 @@ impl Host {
 	}
 
 	/// Get window root DOM element.
-	pub fn get_root(&self) -> Option<::dom::Element> {
-		::dom::Element::from_window(self.hwnd).ok()
+	pub fn get_root(&self) -> Option<dom::Element> {
+		dom::Element::from_window(self.hwnd).ok()
 	}
 
 	/// Load an HTML document from file.
@@ -448,7 +449,7 @@ extern "system" fn _on_handle_notification<T: HostHandler>(pnm: *mut ::capi::scd
 		SCITER_NOTIFICATION::SC_DATA_LOADED => {
 			let scnm = pnm as *mut SCN_DATA_LOADED;
 			me.on_data_loaded(unsafe { &mut *scnm } );
-			0 as UINT
+			0
 		},
 
 		SCITER_NOTIFICATION::SC_ATTACH_BEHAVIOR => {
@@ -477,18 +478,18 @@ extern "system" fn _on_handle_notification<T: HostHandler>(pnm: *mut ::capi::scd
 
 		SCITER_NOTIFICATION::SC_ENGINE_DESTROYED => {
 			me.on_engine_destroyed();
-			0 as UINT
+			0
 		},
 
 		SCITER_NOTIFICATION::SC_GRAPHICS_CRITICAL_FAILURE => {
 			me.on_graphics_critical_failure();
-			0 as UINT
+			0
 		},
 
 		SCITER_NOTIFICATION::SC_INVALIDATE_RECT => {
 			let scnm = pnm as *const SCN_INVALIDATE_RECT;
 			me.on_invalidate(unsafe { &*scnm });
-			0 as UINT
+			0
 		}
 
 		_ => 0,

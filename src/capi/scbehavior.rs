@@ -218,7 +218,7 @@ pub enum PHASE_MASK
 	BUBBLING 				= 0,
 	/// Sinking phase – direction: from containers to target child element.
 	SINKING  				= 0x0_8000,
-	/// Bubbling event consumed by some child.
+	/// Bubbling event consumed by some element.
 	BUBBLING_HANDLED= 0x1_0000,
 	/// Sinking event consumed by some child.
 	SINKING_HANDLED = 0x1_8000,
@@ -242,18 +242,19 @@ pub enum MOUSE_BUTTONS
 
 #[repr(C)]
 #[derive(Copy, Clone)]
-#[derive(Debug, PartialOrd, PartialEq)]
+#[derive(Debug, Default, PartialOrd, PartialEq)]
 /// Keyboard modifier buttons state.
-pub enum KEYBOARD_STATES
-{
-	CONTROL_KEY_PRESSED = 0x01,
-	SHIFT_KEY_PRESSED = 0x02,
-	ALT_KEY_PRESSED = 0x04,
+pub struct KEYBOARD_STATES(u32);
+
+impl KEYBOARD_STATES {
+	pub const CONTROL_KEY_PRESSED: u32 = 0x01;
+	pub const SHIFT_KEY_PRESSED: u32 = 0x02;
+	pub const ALT_KEY_PRESSED: u32 = 0x04;
 }
 
 impl std::convert::From<u32> for KEYBOARD_STATES {
 	fn from(u: u32) -> Self {
-		unsafe { std::mem::transmute(u) }
+		Self(u)
 	}
 }
 
@@ -294,6 +295,9 @@ pub enum MOUSE_EVENTS
 	DRAG_LEAVE  = 0xB,
 	/// drag src notification before drag start. To cancel - return true from handler.
 	DRAG_REQUEST = 0xC,
+
+	/// mouse triple click.
+	MOUSE_TCLICK = 0xF,
 
 	/// mouse click event
 	MOUSE_CLICK = 0xFF,
@@ -359,10 +363,12 @@ pub enum BEHAVIOR_EVENTS
 	EDIT_VALUE_CHANGING,
 	/// after text change
 	EDIT_VALUE_CHANGED,
-	/// selection in `<select>` changed
+	/// selection in `<select>` is changed
 	SELECT_SELECTION_CHANGED,
-	/// node in select expanded/collapsed, heTarget is the node
-	SELECT_STATE_CHANGED,
+	// node in select expanded/collapsed, heTarget is the node - OBSOLETE since 4.4.4.9
+	// SELECT_STATE_CHANGED,
+	/// value of `<select>` is changed
+	SELECT_VALUE_CHANGED,
 
 	/// request to show popup just received,
 	///     here DOM of popup element can be modifed.

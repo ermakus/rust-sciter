@@ -257,6 +257,8 @@ impl From<HELEMENT> for Element {
 	}
 }
 
+const DOM_UNWRAP_API_VERSION: u32 = 0x0000_0007;
+
 /// Store the DOM element as a `Value`.
 ///
 /// Since 4.4.3.26, perhaps.
@@ -264,7 +266,11 @@ impl std::convert::TryFrom<Element> for Value {
 	type Error = SCDOM_RESULT;
 	fn try_from(e: Element) -> Result<Value> {
 		let mut v = Value::new();
-		let ok = (_API.SciterGetExpando)(e.as_ptr(), v.as_ptr(), true as BOOL);
+		let ok = if crate::api_version() >= DOM_UNWRAP_API_VERSION {
+			(_API.SciterElementWrap)(v.as_mut_ptr(), e.as_ptr())
+		} else {
+			(_API.SciterGetExpando)(e.as_ptr(), v.as_ptr(), true as BOOL)
+		};
 		ok_or!(v, ok)
 	}
 }
@@ -272,13 +278,23 @@ impl std::convert::TryFrom<Element> for Value {
 /// Get an `Element` object contained in the `Value`.
 impl crate::value::FromValue for Element {
 	fn from_value(v: &Value) -> Option<Element> {
-		let mut pv: LPCBYTE = std::ptr::null();
-		let mut cb: UINT = 0;
-		let ok = (_API.ValueBinaryData)(v.as_cptr(), &mut pv, &mut cb);
-		if ok == crate::value::VALUE_RESULT::OK {
-			Some(Element::from(pv as HELEMENT))
+		if crate::api_version() >= DOM_UNWRAP_API_VERSION {
+			let mut h = std::ptr::null_mut();
+			let ok = (_API.SciterElementUnwrap)(v.as_cptr(), &mut h);
+			if ok == SCDOM_RESULT::OK {
+				Some(Element::from(h))
+			} else {
+				None
+			}
 		} else {
-			None
+			let mut pv: LPCBYTE = std::ptr::null();
+			let mut cb: UINT = 0;
+			let ok = (_API.ValueBinaryData)(v.as_cptr(), &mut pv, &mut cb);
+			if ok == crate::value::VALUE_RESULT::OK {
+				Some(Element::from(pv as HELEMENT))
+			} else {
+				None
+			}
 		}
 	}
 }
@@ -334,39 +350,67 @@ impl Element {
 			Err(ok)
 		}
 	}
-	/// Get root DOM element of the Sciter document.
+
+	/// Check the given element for `NULL` and returns [`SCDOM_RESULT::OK_NOT_HANDLED`] in that case.
+	///
+	/// Some functions, like `SciterGetRootElement` or `SciterGetHighlightedElement`
+	/// return `OK` if no element found, but `HELEMENT` is `NULL`.
+	///
+	/// We might want to switch to an `Result<Option<Element>> for `Element::from_*` functions,
+	/// but for now let's return an error for such cases.
+	///
+	/// https://github.com/sciter-sdk/rust-sciter/issues/27
+	fn forbid_null(e: Element) -> Result<Element> {
+		if e.he.is_null() {
+			Err(SCDOM_RESULT::OK_NOT_HANDLED)
+		} else {
+			Ok(e)
+		}
+	}
+
+	/// Get the root DOM element of the Sciter document.
+	///
+	/// If there is no document loaded, this function will return [an error](enum.SCDOM_RESULT.html#variant.OK_NOT_HANDLED).
 	pub fn from_window(hwnd: HWINDOW) -> Result<Element> {
 		let mut p = HELEMENT!();
 		let ok = (_API.SciterGetRootElement)(hwnd, &mut p);
-		ok_or!(Element::from(p), ok)
+		ok_or!(Element::from(p), ok).and_then(Element::forbid_null)
 	}
 
 	/// Get focus DOM element of the Sciter document.
+	///
+	/// If there is no such element, this function will return [an error](enum.SCDOM_RESULT.html#variant.OK_NOT_HANDLED).
 	pub fn from_focus(hwnd: HWINDOW) -> Result<Element> {
 		let mut p = HELEMENT!();
 		let ok = (_API.SciterGetFocusElement)(hwnd, &mut p);
-		ok_or!(Element::from(p), ok)
+		ok_or!(Element::from(p), ok).and_then(Element::forbid_null)
 	}
 
 	/// Get highlighted element.
+	///
+	/// If there is no such element, this function will return [an error](enum.SCDOM_RESULT.html#variant.OK_NOT_HANDLED).
 	pub fn from_highlighted(hwnd: HWINDOW) -> Result<Element> {
 		let mut p = HELEMENT!();
 		let ok = (_API.SciterGetHighlightedElement)(hwnd, &mut p);
-		ok_or!(Element::from(p), ok)
+		ok_or!(Element::from(p), ok).and_then(Element::forbid_null)
 	}
 
 	/// Find DOM element of the Sciter document by coordinates.
+	///
+	/// If there is no such element, this function will return [an error](enum.SCDOM_RESULT.html#variant.OK_NOT_HANDLED).
 	pub fn from_point(hwnd: HWINDOW, pt: POINT) -> Result<Element> {
 		let mut p = HELEMENT!();
 		let ok = (_API.SciterFindElement)(hwnd, pt, &mut p);
-		ok_or!(Element::from(p), ok)
+		ok_or!(Element::from(p), ok).and_then(Element::forbid_null)
 	}
 
 	/// Get element handle by its UID.
+	///
+	/// If there is no such element, this function will return [an error](enum.SCDOM_RESULT.html#variant.OK_NOT_HANDLED).
 	pub fn from_uid(hwnd: HWINDOW, uid: u32) -> Result<Element> {
 		let mut p = HELEMENT!();
 		let ok = (_API.SciterGetElementByUID)(hwnd, uid, &mut p);
-		ok_or!(Element::from(p), ok)
+		ok_or!(Element::from(p), ok).and_then(Element::forbid_null)
 	}
 
 	#[doc(hidden)]
@@ -1046,7 +1090,7 @@ impl Element {
 	/// Stop Timer for the element.
 	pub fn stop_timer(&self, timer_id: u64) -> Result<()> {
 		if !self.he.is_null() {
-			let ok = (_API.SciterSetTimer)(self.he, 0 as UINT, timer_id as ::capi::sctypes::UINT_PTR);
+			let ok = (_API.SciterSetTimer)(self.he, 0, timer_id as ::capi::sctypes::UINT_PTR);
 			ok_or!((), ok)
 		} else {
 			Ok(())

@@ -1,6 +1,6 @@
 [package]
 name = "sciter-rs"
-version = "0.5.53"
+version = "0.5.55"
 description = "Rust bindings for Sciter - Embeddable HTML/CSS/script engine (cross-platform desktop GUI toolkit). Also capable with DirectX / OpenGL."
 keywords = ["gui", "gtk", "cocoa", "opengl", "skia"]
 categories = ["gui", "web-programming", "rendering::graphics-api", "api-bindings"]
@@ -40,7 +40,7 @@ nightly = []
 extension = []
 
 # Load Sciter DLL dynamically from the path specified by `sciter::set_library`.
-# Otherwise, links statically to `libsciter-gtk.so` or `sciter-osx-64.dylib`.
+# Otherwise, links statically to `libsciter-gtk.so` or `libsciter.dylib`.
 dynamic = []
 
 # Build this crate specifically for Sciter.Lite versions
@@ -52,12 +52,12 @@ windowless = []
 libc = "0.2"
 lazy_static = "1.0"
 
-[target.x86_64-apple-darwin.dependencies]
+[target.'cfg(target_vendor = "apple")'.dependencies]
 objc = "0.2"
 objc-foundation = "0.1"
 
 [dev-dependencies]
-winit = "0.19"
+winit = "0.24"
 winapi = { version = "0.3", features = [
   "impl-default",
   "winuser",

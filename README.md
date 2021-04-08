@@ -1,16 +1,6 @@
-# Attention!
-
-> :warning: [Crowdfunding campaign to Open Source Sciter and Sciter.JS engines is in effect right now on KickStarter](https://www.kickstarter.com/projects/c-smile/open-source-sciter-engine)
-
-You can help to Open Source the Sciter by:
-
-* donating to the campaign or/and</li>
-* by spreading the word about the campaign.
-
-#### [Let's make it happen!](https://www.kickstarter.com/projects/c-smile/open-source-sciter-engine)
-
 # Rust bindings for Sciter
 
+[![Build-n-Test](https://github.com/sciter-sdk/rust-sciter/actions/workflows/cargo.yml/badge.svg?branch=master)](https://github.com/sciter-sdk/rust-sciter/actions/workflows/cargo.yml)
 [![Build status](https://ci.appveyor.com/api/projects/status/cbrisyh792mmmd08/branch/master?svg=true)](https://ci.appveyor.com/project/pravic/rust-sciter)
 [![Build Status](https://img.shields.io/travis/sciter-sdk/rust-sciter/master.svg)](https://travis-ci.org/sciter-sdk/rust-sciter)
 [![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.38+-green.svg)](https://github.com/sciter-sdk/rust-sciter/commits/master/.travis.yml)
@@ -129,7 +119,7 @@ impl sciter::EventHandler for Handler {
 
 And we can access this function from script:
 ```js
-// `view` represents window where script is runnung.
+// `view` represents window where script is running.
 // `stdout` stream is a standard output stream (shell or debugger console, for example)
 
 stdout.printf("2 + 3 = %d\n", view.calc_sum(2, 3));

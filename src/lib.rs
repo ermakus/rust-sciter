@@ -67,6 +67,9 @@ folder for more complex usage and module-level sections for the guides about:
 #![allow(clippy::needless_return, clippy::let_and_return)] // past habits
 #![allow(clippy::redundant_field_names)] // since Rust 1.17 and less readable
 #![allow(clippy::unreadable_literal)] // C++ SDK constants
+#![allow(clippy::upper_case_acronyms)]// C++ SDK constants
+#![allow(clippy::deprecated_semver)]  // `#[deprecated(since="Sciter 4.4.3.24")]` is not a semver format.
+#![allow(clippy::result_unit_err)]		// Sciter returns BOOL, but `Result<(), ()>` is more strict even without error description.
 // #![allow(clippy::cast_ptr_alignment)] // 0.0.195 only
 
 
@@ -210,7 +213,7 @@ mod ext {
 	pub unsafe fn SciterAPI() -> *const ISciterAPI {
     match try_load_library(true) {
       Ok(api) => api,
-      Err(error) => panic!(error),
+      Err(error) => panic!("{}", error),
     }
 	}
 }
@@ -223,10 +226,11 @@ mod ext {
   pub static mut CUSTOM_DLL_PATH: Option<String> = None;
 
   #[cfg(target_os = "linux")]
-  const DLL_NAMES: &'static [&'static str] = &[ "libsciter-gtk.so" ];
+  const DLL_NAMES: &[&str] = &[ "libsciter-gtk.so" ];
 
-  #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-  const DLL_NAMES: &'static [&'static str] = &[ "sciter-osx-64.dylib" ];
+	// "libsciter.dylib" since Sciter 4.4.6.3.
+  #[cfg(target_os = "macos")]
+  const DLL_NAMES: &[&str] = &[ "libsciter.dylib", "sciter-osx-64.dylib" ];
 
   use capi::scapi::ISciterAPI;
   use capi::sctypes::{LPVOID, LPCSTR};
@@ -238,7 +242,7 @@ mod ext {
   pub fn try_load_library(permanent: bool) -> ::std::result::Result<ApiType, String> {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
-    use std::path::{Path, PathBuf};
+    use std::path::{Path};
 
 
     // Try to load the library from a specified absolute path.
@@ -258,13 +262,12 @@ mod ext {
 
       let dll = DLL_NAMES.iter()
         .map(|name| {
-          let mut path = dir.map(Path::to_owned).unwrap_or(PathBuf::new());
+          let mut path = dir.map(Path::to_owned).unwrap_or_default();
           path.push(name);
           path
         })
         .map(|path| try_load(&path))
-        .filter(|dll| dll.is_some())
-        .nth(0)
+        .find(|dll| dll.is_some())
         .map(|o| o.unwrap());
 
       if dll.is_some() {
@@ -286,8 +289,18 @@ mod ext {
           if cfg!(target_os = "macos") {
             // "(bundle folder)/Contents/Frameworks/"
             let mut path = dir.to_owned();
+            path.push("../Frameworks/libsciter.dylib");
+            let dll = try_load(&path);
+						if dll.is_some() {
+							return dll;
+						}
+
+            let mut path = dir.to_owned();
             path.push("../Frameworks/sciter-osx-64.dylib");
-            return try_load(&path);
+            let dll = try_load(&path);
+						if dll.is_some() {
+							return dll;
+						}
           }
         }
       }
@@ -344,7 +357,7 @@ mod ext {
   pub fn SciterAPI() -> *const ISciterAPI {
     match try_load_library(true) {
       Ok(api) => api,
-      Err(error) => panic!(error),
+      Err(error) => panic!("{}", error),
     }
   }
 }
@@ -362,7 +375,7 @@ mod ext {
 
 #[cfg(all(target_os = "macos", target_arch = "x86_64", not(feature = "dynamic")))]
 mod ext {
-	#[link(name = "sciter-osx-64", kind = "dylib")]
+	#[link(name = "libsciter", kind = "dylib")]
 	extern "system" { pub fn SciterAPI() -> *const ::capi::scapi::ISciterAPI;	}
 }
 
@@ -504,12 +517,13 @@ pub fn version() -> String {
 ///
 /// Returns:
 ///
-///	* `0x0000_0001` for regular builds, `0x0001_0001` for windowless builds.
+/// * `0x0000_0001` for regular builds, `0x0001_0001` for windowless builds.
 /// * `0x0000_0002` since 4.4.2.14 (a breaking change in assets with [SOM builds](https://sciter.com/native-code-exposure-to-script/))
 /// * `0x0000_0003` since 4.4.2.16
 /// * `0x0000_0004` since 4.4.2.17 (a breaking change in SOM passport)
 /// * `0x0000_0005` since 4.4.3.20 (a breaking change in `INITIALIZATION_PARAMS`, SOM in event handlers fix)
 /// * `0x0000_0006` since 4.4.3.24 (TIScript native API is gone, use SOM instead)
+/// * `0x0000_0007` since 4.4.5.4  (DOM-Value conversion functions were added, no breaking change)
 ///
 /// Since 4.4.0.3.
 pub fn api_version() -> u32 {
@@ -556,6 +570,10 @@ pub enum RuntimeOptions<'a> {
 	InitScript(&'a str),
 	/// global; value - max request length in megabytes (1024*1024 bytes), since 4.3.0.15.
 	MaxHttpDataLength(usize),
+	/// global or per-window; value: `true` - `1px` in CSS is treated as `1dip`, otherwise `1px` is a physical pixel (by default).
+	///
+	/// since [4.4.5.0](https://rawgit.com/c-smile/sciter-sdk/aafb625bb0bc317d79c0a14d02b5730f6a02b48a/logfile.htm).
+	LogicalPixel(bool),
 }
 
 /// Set various global Sciter engine options, see the [`RuntimeOptions`](enum.RuntimeOptions.html).
@@ -572,6 +590,8 @@ pub fn set_options(options: RuntimeOptions) -> std::result::Result<(), ()> {
 		DebugMode(enable) => (SCITER_SET_DEBUG_MODE, enable as usize),
 		UxTheming(enable) => (SCITER_SET_UX_THEMING, enable as usize),
 		MaxHttpDataLength(value) => (SCITER_SET_MAX_HTTP_DATA_LENGTH, value),
+		LogicalPixel(enable) => (SCITER_SET_PX_AS_DIP, enable as usize),
+
     LibraryPath(path) => {
       return set_library(path).map_err(|_|());
     }
@@ -579,6 +599,33 @@ pub fn set_options(options: RuntimeOptions) -> std::result::Result<(), ()> {
 	let ok = (_API.SciterSetOption)(std::ptr::null_mut(), option, value);
 	if ok != 0 {
 		Ok(())
+	} else {
+		Err(())
+	}
+}
+
+/// Set a global variable by its path.
+///
+/// See the per-window [`Window::set_variable`](window/struct.Window.html#method.set_variable).
+pub fn set_variable(path: &str, value: Value) -> std::result::Result<(), ()> {
+	let ws = s2w!(path);
+	let ok = (_API.SciterSetVariable)(std::ptr::null_mut(), ws.as_ptr(), value.as_cptr());
+	if ok != 0 {
+		Ok(())
+	} else {
+		Err(())
+	}
+}
+
+/// Get a global variable by its path.
+///
+/// See the per-window [`Window::get_variable`](window/struct.Window.html#method.get_variable).
+pub fn get_variable(path: &str) -> std::result::Result<Value, ()> {
+	let ws = s2w!(path);
+	let mut value = Value::new();
+	let ok = (_API.SciterGetVariable)(std::ptr::null_mut(), ws.as_ptr(), value.as_mut_ptr());
+	if ok != 0 {
+		Ok(value)
 	} else {
 		Err(())
 	}
