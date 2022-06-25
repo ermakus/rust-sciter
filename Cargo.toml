@@ -97,3 +97,7 @@ path = "examples/clock.rs"
 [[example]]
 name = "som"
 path = "examples/som.rs"
+
+[profile.release]
+lto=true
+opt-level='z'
