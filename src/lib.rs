@@ -132,13 +132,6 @@ use capi::screquest::SciterRequestAPI;
 
 #[cfg(windows)]
 mod ext {
-	#[link(name = "sciter.static")]
-	extern "system" { pub fn SciterAPI() -> *const ::capi::scapi::ISciterAPI;	}
-}
-
-/*
-#[cfg(all(windows, feature = "dynamic"))]
-mod ext {
 	// Note:
 	// Sciter 4.x shipped with universal "sciter.dll" library for different builds:
 	// bin/32, bin/64, bin/skia32, bin/skia64
@@ -224,7 +217,6 @@ mod ext {
     }
 	}
 }
-*/
 
 #[cfg(all(feature = "dynamic", unix))]
 mod ext {
@@ -468,12 +460,12 @@ lazy_static! {
 /// }
 /// ```
 pub fn set_library(custom_path: &str) -> ::std::result::Result<(), String> {
-  #[cfg(any(windows, not(feature = "dynamic")))]
+  #[cfg(not(feature = "dynamic"))]
   fn set_impl(_: &str) -> ::std::result::Result<(), String> {
     Err("Don't use `sciter::set_library()` in static builds.\n  Build with the feature \"dynamic\" instead.".to_owned())
   }
 
-  #[cfg(all(not(windows), feature = "dynamic"))]
+  #[cfg(feature = "dynamic")]
   fn set_impl(path: &str) -> ::std::result::Result<(), String> {
     unsafe {
       ext::CUSTOM_DLL_PATH = Some(path.to_owned());
