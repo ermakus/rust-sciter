@@ -1,5 +1,4 @@
 #![allow(unused_variables, unused_must_use)]
-
 extern crate sciter;
 
 use sciter::dom::event::*;
@@ -148,13 +147,13 @@ impl sciter::EventHandler for VideoGen {
 }
 
 fn main() {
-  if cfg!(all(target_os = "windows", target_arch = "x86")) {
-    println!("\nerror: Sciter video will not work on Windows x86.");
-    println!("error: Consider using a nightly Rust version to enable `abi_thiscall`,");
-		println!("error: see https://github.com/rust-lang/rust/issues/42202");
-		println!("");
-    std::process::exit(126);
-	}
+ //  if cfg!(all(target_os = "windows", target_arch = "x86")) {
+ //    println!("\nerror: Sciter video will not work on Windows x86.");
+ //    println!("error: Consider using a nightly Rust version to enable `abi_thiscall`,");
+	// 	println!("error: see https://github.com/rust-lang/rust/issues/42202");
+	// 	println!("");
+ //    std::process::exit(126);
+	// }
 
 	if sciter::version_num() < 0x04_04_02_0E {
 		// since 4.4.2.14

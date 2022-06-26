@@ -4,7 +4,6 @@ version = "0.5.58"
 description = "Rust bindings for Sciter - Embeddable HTML/CSS/script engine (cross-platform desktop GUI toolkit). Also capable with DirectX / OpenGL."
 keywords = ["gui", "gtk", "cocoa", "opengl", "skia"]
 categories = ["gui", "web-programming", "rendering::graphics-api", "api-bindings"]
-build = "build.rs"
 
 authors = ["pravic <ehysta@gmail.com>"]
 repository = "https://github.com/sciter-sdk/rust-sciter"
@@ -97,3 +96,7 @@ path = "examples/clock.rs"
 [[example]]
 name = "som"
 path = "examples/som.rs"
+
+[profile.release]
+lto=true
+opt-level='z'

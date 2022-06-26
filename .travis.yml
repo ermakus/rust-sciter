@@ -13,7 +13,6 @@ os:
   - osx
 
 rust:
-  - stable
   - nightly
   - 1.46.0
 
